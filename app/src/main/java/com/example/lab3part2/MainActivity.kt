@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 class MainActivity : AppCompatActivity() {
     private lateinit var recordButton: Button
@@ -36,7 +38,10 @@ class MainActivity : AppCompatActivity() {
 
         audioFilePath = "${externalCacheDir?.absolutePath}/recording.raw"
 
-        val uploader = MFCCUploader("https://example.com/upload", this)  // Replace with your URL
+        // Load URL from the assets file
+        val url = loadURLFromFile()
+
+        val uploader = MFCCUploader(url, this)  // Use URL from file
         audioHandler = AudioHandler(sampleRate, bufferSize)
         mfccExtractor = MFCCExtractor(
             samplingRate = sampleRate,
@@ -55,6 +60,12 @@ class MainActivity : AppCompatActivity() {
         stopButton.setOnClickListener {
             stopRecording()
         }
+    }
+
+    private fun loadURLFromFile(): String {
+        val inputStream = assets.open("url.txt")
+        val reader = BufferedReader(InputStreamReader(inputStream))
+        return reader.readLine()
     }
 
     private fun startRecording() {
