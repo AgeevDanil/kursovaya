@@ -39,9 +39,9 @@ class MainActivity : AppCompatActivity() {
         audioFilePath = "${externalCacheDir?.absolutePath}/recording.raw"
 
         // Load URL from the assets file
-        val url = loadURLFromFile()
 
-        val uploader = MFCCUploader(url, this)  // Use URL from file
+
+        val uploader = MFCCUploader("https://example.com/upload", this)  // Use URL from file
         audioHandler = AudioHandler(sampleRate, bufferSize)
         mfccExtractor = MFCCExtractor(
             samplingRate = sampleRate,
@@ -62,11 +62,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadURLFromFile(): String {
-        val inputStream = assets.open("url.txt")
-        val reader = BufferedReader(InputStreamReader(inputStream))
-        return reader.readLine()
-    }
 
     private fun startRecording() {
         audioHandler.startRecording(audioFilePath)
@@ -90,7 +85,7 @@ class MainActivity : AppCompatActivity() {
                         if (success) {
                             statusTextView.text = "Processing completed successfully"
                         } else {
-                            statusTextView.text = "Error occurred during processing: Server error $errorCode"
+                            statusTextView.text = "Попробуй еще раз: Server error $errorCode"
                         }
                     }
                 }

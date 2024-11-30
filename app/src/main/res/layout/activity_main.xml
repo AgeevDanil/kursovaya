@@ -9,28 +9,30 @@
 
     <Button
         android:id="@+id/recordButton"
-        android:layout_width="wrap_content"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
         android:text="Start Recording"
         android:textColor="@color/white"
-        android:backgroundTint="@color/button_color"
+        android:backgroundTint="@color/button_start_color"
         android:layout_marginTop="16dp"
         android:padding="12dp"
         android:textSize="16sp"
-        android:elevation="4dp" />
+        android:elevation="4dp"
+        android:background="@drawable/rounded_button"/>
 
     <Button
         android:id="@+id/stopButton"
-        android:layout_width="wrap_content"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
         android:text="Stop Recording"
         android:visibility="gone"
         android:textColor="@color/white"
-        android:backgroundTint="@color/button_color"
+        android:backgroundTint="@color/button_stop_color"
         android:layout_marginTop="16dp"
         android:padding="12dp"
         android:textSize="16sp"
-        android:elevation="4dp" />
+        android:elevation="4dp"
+        android:background="@drawable/rounded_button"/>
 
     <TextView
         android:id="@+id/statusTextView"
@@ -40,5 +42,6 @@
         android:padding="8dp"
         android:textSize="16sp"
         android:layout_marginTop="32dp"
-        android:textColor="@color/text_color" />
+        android:textColor="@color/text_color"
+        android:background="@drawable/textview_background"/>
 </LinearLayout>
