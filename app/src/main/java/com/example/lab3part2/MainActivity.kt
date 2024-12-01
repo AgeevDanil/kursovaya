@@ -39,7 +39,7 @@ class MainActivity : AppCompatActivity() {
         audioWavPath = "${externalCacheDir?.absolutePath}/recording.wav"
 
         audioHandler = AudioHandler(sampleRate, bufferSize)
-        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/auth-mfcc", applicationContext)
+        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/auth-mfcc", applicationContext) // Когда серверная часть доработается заменить урл
 
         recordButton.setOnClickListener {
             startRecording()

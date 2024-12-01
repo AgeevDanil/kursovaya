@@ -9,7 +9,6 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -56,7 +55,7 @@ class MFCCUploader(private val url: String, private val context: Context) {
         val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
         val requestBody: RequestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("https://example.com/login")  // Replace with your URL
+            .url("https://xuy.com/login")  // Когда серверная часть доработается
             .post(requestBody)
             .build()
 
