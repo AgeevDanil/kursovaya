@@ -1,5 +1,6 @@
 package com.example.lab3part2
 
+import AudioHandler
 import android.Manifest
 import android.content.pm.PackageManager
 import android.media.AudioFormat
@@ -18,7 +19,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusTextView: TextView
     private lateinit var audioHandler: AudioHandler
     private lateinit var mfccUploader: MFCCUploader
-    private lateinit var audioRawPath: String
     private lateinit var audioWavPath: String
     private val sampleRate = 44100
     private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
@@ -35,11 +35,11 @@ class MainActivity : AppCompatActivity() {
         stopButton = findViewById(R.id.stopButton)
         statusTextView = findViewById(R.id.statusTextView)
 
-        audioRawPath = "${externalCacheDir?.absolutePath}/recording.raw"
+        // Указываем путь для записи в WAV
         audioWavPath = "${externalCacheDir?.absolutePath}/recording.wav"
 
         audioHandler = AudioHandler(sampleRate, bufferSize)
-        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/auth-mfcc", applicationContext) // Когда серверная часть доработается заменить урл
+        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/auth-mfcc", applicationContext) // Когда серверная часть доработается, заменить урл
 
         recordButton.setOnClickListener {
             startRecording()
@@ -51,7 +51,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startRecording() {
-        audioHandler.startRecording(audioRawPath)
+        // Теперь сразу записываем в WAV
+        audioHandler.startRecording(audioWavPath)
         recordButton.visibility = Button.GONE
         stopButton.visibility = Button.VISIBLE
         statusTextView.text = "Recording..."
@@ -62,15 +63,11 @@ class MainActivity : AppCompatActivity() {
         recordButton.visibility = Button.VISIBLE
         stopButton.visibility = Button.GONE
 
-        statusTextView.text = "Converting to WAV..."
+        statusTextView.text = "Uploading audio file..."
         stopButton.isEnabled = false
 
         CoroutineScope(Dispatchers.Main).launch {
-            withContext(Dispatchers.IO) {
-                audioHandler.convertRawToWav(audioRawPath, audioWavPath, sampleRate)
-            }
-
-            statusTextView.text = "Uploading audio file..."
+            // Загружаем аудиофайл в формате WAV
             withContext(Dispatchers.IO) {
                 mfccUploader.uploadAudioFile(audioWavPath) { success, errorCode ->
                     runOnUiThread {
