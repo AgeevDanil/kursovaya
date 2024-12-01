@@ -11,17 +11,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 class MainActivity : AppCompatActivity() {
     private lateinit var recordButton: Button
     private lateinit var stopButton: Button
     private lateinit var statusTextView: TextView
     private lateinit var audioHandler: AudioHandler
-    private lateinit var mfccExtractor: MFCCExtractor
-    private lateinit var audioFilePath: String
-    private val sampleRate = 16000  // Set sample rate to 16000 Hz
+    private lateinit var mfccUploader: MFCCUploader
+    private lateinit var audioRawPath: String
+    private lateinit var audioWavPath: String
+    private val sampleRate = 44100
     private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,62 +35,54 @@ class MainActivity : AppCompatActivity() {
         stopButton = findViewById(R.id.stopButton)
         statusTextView = findViewById(R.id.statusTextView)
 
-        audioFilePath = "${externalCacheDir?.absolutePath}/recording.raw"
+        audioRawPath = "${externalCacheDir?.absolutePath}/recording.raw"
+        audioWavPath = "${externalCacheDir?.absolutePath}/recording.wav"
 
-        // Load URL from the assets file
-
-
-        val uploader = MFCCUploader("https://example.com/upload", this)  // Use URL from file
         audioHandler = AudioHandler(sampleRate, bufferSize)
-        mfccExtractor = MFCCExtractor(
-            samplingRate = sampleRate,
-            frameDuration = 0.001,
-            hopDuration = 0.0005,
-            featureCount = 300,
-            filterBankSize = 500,
-            preEmphasis = 0.87,
-            uploader = uploader
-        )
+        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/auth-mfcc", applicationContext)
 
         recordButton.setOnClickListener {
             startRecording()
         }
 
         stopButton.setOnClickListener {
-            stopRecording()
+            stopRecordingAndUpload()
         }
     }
 
-
     private fun startRecording() {
-        audioHandler.startRecording(audioFilePath)
+        audioHandler.startRecording(audioRawPath)
         recordButton.visibility = Button.GONE
         stopButton.visibility = Button.VISIBLE
-        statusTextView.text = ""
+        statusTextView.text = "Recording..."
     }
 
-    private fun stopRecording() {
+    private fun stopRecordingAndUpload() {
         audioHandler.stopRecording()
         recordButton.visibility = Button.VISIBLE
         stopButton.visibility = Button.GONE
 
-        statusTextView.text = "Processing..."
+        statusTextView.text = "Converting to WAV..."
         stopButton.isEnabled = false
 
         CoroutineScope(Dispatchers.Main).launch {
-            val result = withContext(Dispatchers.IO) {
-                mfccExtractor.extractMFCC(audioFilePath) { success, errorCode ->
+            withContext(Dispatchers.IO) {
+                audioHandler.convertRawToWav(audioRawPath, audioWavPath, sampleRate)
+            }
+
+            statusTextView.text = "Uploading audio file..."
+            withContext(Dispatchers.IO) {
+                mfccUploader.uploadAudioFile(audioWavPath) { success, errorCode ->
                     runOnUiThread {
                         if (success) {
-                            statusTextView.text = "Processing completed successfully"
+                            statusTextView.text = "Upload successful, navigating to next screen..."
                         } else {
-                            statusTextView.text = "Попробуй еще раз: Server error $errorCode"
+                            statusTextView.text = "Upload failed: Server error $errorCode"
                         }
+                        stopButton.isEnabled = true
                     }
                 }
             }
-
-            stopButton.isEnabled = true
         }
     }
 
