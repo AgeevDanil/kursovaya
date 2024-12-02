@@ -40,6 +40,16 @@ class AudioHandler(private val sampleRate: Int, private val bufferSize: Int) {
                     // Write audio data
                     while (isRecording) {
                         val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
+                        Log.d("AudioHandler", "Bytes read from AudioRecord: $read")
+
+                        // Проверка данных на адекватность уровня громкости
+                        val dataSnippet = buffer.take(10).joinToString(" ") { it.toString() }
+                        Log.d("AudioHandler", "Audio data snippet: $dataSnippet")
+
+                        if (buffer.none { it.toInt() != 0 }) {
+                            Log.w("AudioHandler", "All zero bytes detected in buffer, check microphone input.")
+                        }
+
                         if (read > 0) {
                             outputStream.write(buffer, 0, read)
                             totalBytesRecorded += read

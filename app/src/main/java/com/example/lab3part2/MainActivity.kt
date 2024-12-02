@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
+import java.io.File
 
 // Импортируем AudioHandler
 import com.example.lab3part2.AudioHandler
@@ -45,7 +46,7 @@ class MainActivity : AppCompatActivity() {
         mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/get-mfcc", applicationContext)
 
         recordButton.setOnClickListener {
-            startRecording(audioWavPath)
+            startRecording()
         }
 
         stopButton.setOnClickListener {
@@ -53,7 +54,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startRecording(downloadsPath: String) {
+    private fun startRecording() {
         try {
             audioHandler.startRecording(audioWavPath, { error ->
                 statusTextView.text = "Failed to start recording: $error"
@@ -84,6 +85,7 @@ class MainActivity : AppCompatActivity() {
                         runOnUiThread {
                             if (success) {
                                 statusTextView.text = "Upload successful, navigating to next screen..."
+                                clearCache()
                             } else {
                                 statusTextView.text = "Upload failed: Server error $errorCode, $errorMessage"
                             }
@@ -119,5 +121,21 @@ class MainActivity : AppCompatActivity() {
             ),
             200
         )
+    }
+
+    private fun clearCache() {
+        try {
+            val cacheDir = externalCacheDir
+            if (cacheDir != null && cacheDir.isDirectory) {
+                cacheDir.listFiles()?.forEach { file ->
+                    if (!file.delete()) {
+                        Log.e("MainActivity", "Failed to delete ${file.absolutePath}")
+                    }
+                }
+                Log.d("MainActivity", "Cache cleared successfully")
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to clear cache: ${e.message}")
+        }
     }
 }
