@@ -1,18 +1,20 @@
+package com.example.lab3part2
+
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
 import kotlinx.coroutines.*
-import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.RandomAccessFile
 
 class AudioHandler(private val sampleRate: Int, private val bufferSize: Int) {
     private var audioRecord: AudioRecord? = null
     var isRecording = false
         private set
 
-    fun startRecording(wavFilePath: String, maxDurationSeconds: Int = 2, onError: (String) -> Unit = {}) {
+    fun startRecording(wavFilePath: String, onError: (String) -> Unit = {}) {
         Log.d("AudioHandler", "Start recording")
         audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize)
 
@@ -24,7 +26,6 @@ class AudioHandler(private val sampleRate: Int, private val bufferSize: Int) {
 
         audioRecord?.startRecording()
         isRecording = true
-        val maxDurationBytes = maxDurationSeconds * sampleRate * 2 // 2 bytes per sample for PCM 16-bit
 
         CoroutineScope(Dispatchers.IO).launch {
             val buffer = ByteArray(bufferSize)
@@ -32,26 +33,27 @@ class AudioHandler(private val sampleRate: Int, private val bufferSize: Int) {
 
             try {
                 FileOutputStream(wavFilePath).use { outputStream ->
-                    // Write WAV header first
-                    val byteRate = sampleRate * 1 * 2 // 16-bit PCM, mono (1 channel)
-                    val header = ByteArray(44) // Standard WAV header size
-                    writeWavHeader(outputStream, header, byteRate, 0) // 0 for now, we will update later
+                    // Write the initial header with placeholder values
+                    val byteRate = sampleRate * 2 // 16-bit PCM, mono (1 channel)
+                    writeWavHeader(outputStream, byteRate, 0)
 
-                    while (isRecording && totalBytesRecorded < maxDurationBytes) {
+                    // Write audio data
+                    while (isRecording) {
                         val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                         if (read > 0) {
                             outputStream.write(buffer, 0, read)
                             totalBytesRecorded += read
                         } else {
-                            Log.e("AudioHandler", "Error reading data from AudioRecord: $read")
+                            Log.e("AudioHandler", "No data read from AudioRecord: $read")
+                            delay(10)  // небольшой таймаут перед повторной попыткой
                         }
                     }
-
-                    // Now, update the header with the correct file size and data length
-                    val fileLength = totalBytesRecorded + 36
-                    val dataLength = totalBytesRecorded
-                    writeWavHeader(outputStream, header, byteRate, dataLength)
                 }
+
+                // Update the header with the correct file size and data length
+                val byteRate = sampleRate * 2
+                updateWavHeader(wavFilePath, byteRate, totalBytesRecorded)
+
                 Log.d("AudioHandler", "Recording finished. Total bytes recorded: $totalBytesRecorded")
             } catch (e: IOException) {
                 Log.e("AudioHandler", "Error writing audio to file: ${e.message}")
@@ -60,28 +62,38 @@ class AudioHandler(private val sampleRate: Int, private val bufferSize: Int) {
         }
     }
 
-    private fun writeWavHeader(outputStream: FileOutputStream, header: ByteArray, byteRate: Int, dataLength: Int) {
+    private fun writeWavHeader(outputStream: FileOutputStream, byteRate: Int, dataLength: Int) {
+        val header = ByteArray(44)
         // RIFF header
         "RIFF".toByteArray().copyInto(header, 0)
-        // Total file length (dataLength + 36 bytes for header)
-        intToByteArray(dataLength + 36).copyInto(header, 4)
-        // WAVE format
+        intToByteArray(dataLength + 36).copyInto(header, 4) // Total file length
         "WAVE".toByteArray().copyInto(header, 8)
         // fmt sub-chunk
         "fmt ".toByteArray().copyInto(header, 12)
-        intToByteArray(16).copyInto(header, 16) // Subchunk1Size
-        shortToByteArray(1).copyInto(header, 20) // AudioFormat (1 = PCM)
-        shortToByteArray(1).copyInto(header, 22) // Number of channels (1 = mono)
+        intToByteArray(16).copyInto(header, 16) // Subchunk1Size (16 for PCM)
+        shortToByteArray(1).copyInto(header, 20) // AudioFormat (1 for PCM)
+        shortToByteArray(1).copyInto(header, 22) // Number of channels (1 for mono)
         intToByteArray(sampleRate).copyInto(header, 24) // Sample rate
         intToByteArray(byteRate).copyInto(header, 28) // Byte rate
-        shortToByteArray(2).copyInto(header, 32) // Block align (channels * bits per sample / 8)
+        shortToByteArray(2).copyInto(header, 32) // Block align (bytes per sample)
         shortToByteArray(16).copyInto(header, 34) // Bits per sample
         // data sub-chunk
         "data".toByteArray().copyInto(header, 36)
-        // Data length (number of bytes)
-        intToByteArray(dataLength).copyInto(header, 40)
+        intToByteArray(dataLength).copyInto(header, 40) // Data length
+        outputStream.write(header, 0, 44)
+    }
 
-        outputStream.write(header)
+    private fun updateWavHeader(filePath: String, byteRate: Int, dataLength: Int) {
+        try {
+            val randomAccessFile = RandomAccessFile(filePath, "rw")
+            randomAccessFile.seek(4)
+            randomAccessFile.write(intToByteArray(dataLength + 36), 0, 4)
+            randomAccessFile.seek(40)
+            randomAccessFile.write(intToByteArray(dataLength), 0, 4)
+            randomAccessFile.close()
+        } catch (e: IOException) {
+            Log.e("AudioHandler", "Error updating WAV header: ${e.message}")
+        }
     }
 
     fun stopRecording() {

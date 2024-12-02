@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -12,36 +13,54 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class MFCCUploader(private val url: String, private val context: Context) {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
 
-    fun uploadAudioFile(filePath: String, callback: (Boolean, Int) -> Unit) {
+    fun uploadAudioFile(filePath: String, callback: (Boolean, Int, String?) -> Unit) {
         val file = File(filePath)
+        if (!file.exists()) {
+            Log.e("MFCCUploader", "Файл не найден: $filePath")
+            callback(false, -1, "Файл не найден")
+            return
+        }
+
         val mediaType = "audio/wav".toMediaTypeOrNull()
-        val requestBody = file.asRequestBody(mediaType)
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("voiceFile", file.name, file.asRequestBody(mediaType))
+            .build()
+
         val request = Request.Builder()
-            .url(url) // Используется ваш API URL
+            .url(url)
             .post(requestBody)
             .build()
 
-        Log.d("MFCCUploader", "Uploading file: ${file.absolutePath}")
+        Log.d("MFCCUploader", "Отправка файла на сервер: ${file.name}")
+        Log.d("MFCCUploader", "Запрос URL: ${request.url}")
+        Log.d("MFCCUploader", "Запрос Headers: ${request.headers}")
+        Log.d("MFCCUploader", "Запрос Body: ${requestBody.contentType()}")
 
         client.newCall(request).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: IOException) {
-                Log.e("MFCCUploader", "Error uploading audio file: ${e.message}")
-                callback(false, -1)
+                Log.e("MFCCUploader", "Ошибка при загрузке файла: ${e.message}")
+                callback(false, -1, e.message)
             }
 
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val responseBody = response.body?.string()
+                Log.d("MFCCUploader", "Ответ сервера: ${response.code}, тело: $responseBody")
+                navigateToSecondForm()
                 if (response.isSuccessful) {
-                    Log.d("MFCCUploader", "Audio file upload successful")
-                    callback(true, response.code)
-                    navigateToSecondForm()
+                    callback(true, response.code, responseBody)
                 } else {
-                    Log.e("MFCCUploader", "Server error: ${response.code}")
-                    Log.e("MFCCUploader", "Response Body: ${response.body?.string()}")
-                    callback(false, response.code)
+                    callback(false, response.code, responseBody)
                 }
             }
         })
@@ -55,22 +74,31 @@ class MFCCUploader(private val url: String, private val context: Context) {
         val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
         val requestBody: RequestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("https://xuy.com/login")  // Когда серверная часть доработается
+            .url("https://xuy.com/login")
             .post(requestBody)
             .build()
 
+        Log.d("MFCCUploader", "Отправка запроса на авторизацию")
+        Log.d("MFCCUploader", "Запрос URL: ${request.url}")
+        Log.d("MFCCUploader", "Запрос Headers: ${request.headers}")
+        Log.d("MFCCUploader", "Запрос Body: ${requestBody.contentType()}")
+
         client.newCall(request).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: IOException) {
-                Log.e("MFCCUploader", "Login error: ${e.message}")
+                Log.e("MFCCUploader", "Ошибка при авторизации: ${e.message}")
                 onResult(false, e.message ?: "Login failed")
             }
 
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                Log.d("MFCCUploader", "Ответ сервера получен при авторизации")
+                val responseBody = response.body?.string()
+                Log.d("MFCCUploader", "Ответ сервера: ${response.code}, тело: $responseBody")
+
                 if (response.isSuccessful) {
-                    Log.d("MFCCUploader", "Login successful")
+                    Log.d("MFCCUploader", "Авторизация успешна")
                     onResult(true, "Login successful")
                 } else {
-                    Log.e("MFCCUploader", "Login error: ${response.code}")
+                    Log.e("MFCCUploader", "Ошибка авторизации: ${response.code}")
                     onResult(false, "Login failed: ${response.code}")
                 }
             }
@@ -86,5 +114,4 @@ class MFCCUploader(private val url: String, private val context: Context) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }
-
 }

@@ -1,17 +1,21 @@
 package com.example.lab3part2
 
-import AudioHandler
 import android.Manifest
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.os.Bundle
+import android.os.Environment
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
+
+// Импортируем AudioHandler
+import com.example.lab3part2.AudioHandler
 
 class MainActivity : AppCompatActivity() {
     private lateinit var recordButton: Button
@@ -35,14 +39,13 @@ class MainActivity : AppCompatActivity() {
         stopButton = findViewById(R.id.stopButton)
         statusTextView = findViewById(R.id.statusTextView)
 
-        // Указываем путь для записи в WAV
         audioWavPath = "${externalCacheDir?.absolutePath}/recording.wav"
 
         audioHandler = AudioHandler(sampleRate, bufferSize)
-        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/auth-mfcc", applicationContext) // Когда серверная часть доработается, заменить урл
+        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/get-mfcc", applicationContext)
 
         recordButton.setOnClickListener {
-            startRecording()
+            startRecording(audioWavPath)
         }
 
         stopButton.setOnClickListener {
@@ -50,36 +53,48 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startRecording() {
-        // Теперь сразу записываем в WAV
-        audioHandler.startRecording(audioWavPath)
-        recordButton.visibility = Button.GONE
-        stopButton.visibility = Button.VISIBLE
-        statusTextView.text = "Recording..."
+    private fun startRecording(downloadsPath: String) {
+        try {
+            audioHandler.startRecording(audioWavPath, { error ->
+                statusTextView.text = "Failed to start recording: $error"
+                Log.e("MainActivity", "Error starting recording", Throwable(error))
+            })
+            recordButton.visibility = Button.GONE
+            stopButton.visibility = Button.VISIBLE
+            statusTextView.text = "Recording..."
+            Log.d("MainActivity", "Recording started at $audioWavPath")
+        } catch (e: Exception) {
+            statusTextView.text = "Failed to start recording: ${e.message}"
+            Log.e("MainActivity", "Error starting recording", e)
+        }
     }
 
     private fun stopRecordingAndUpload() {
-        audioHandler.stopRecording()
-        recordButton.visibility = Button.VISIBLE
-        stopButton.visibility = Button.GONE
+        try {
+            audioHandler.stopRecording()
+            Log.d("MainActivity", "Recording stopped, file saved at $audioWavPath")
 
-        statusTextView.text = "Uploading audio file..."
-        stopButton.isEnabled = false
+            recordButton.visibility = Button.VISIBLE
+            stopButton.visibility = Button.GONE
+            statusTextView.text = "Uploading audio file..."
 
-        CoroutineScope(Dispatchers.Main).launch {
-            // Загружаем аудиофайл в формате WAV
-            withContext(Dispatchers.IO) {
-                mfccUploader.uploadAudioFile(audioWavPath) { success, errorCode ->
-                    runOnUiThread {
-                        if (success) {
-                            statusTextView.text = "Upload successful, navigating to next screen..."
-                        } else {
-                            statusTextView.text = "Upload failed: Server error $errorCode"
+            CoroutineScope(Dispatchers.Main).launch {
+                withContext(Dispatchers.IO) {
+                    mfccUploader.uploadAudioFile(audioWavPath) { success, errorCode, errorMessage ->
+                        runOnUiThread {
+                            if (success) {
+                                statusTextView.text = "Upload successful, navigating to next screen..."
+                            } else {
+                                statusTextView.text = "Upload failed: Server error $errorCode, $errorMessage"
+                            }
+                            stopButton.isEnabled = true
                         }
-                        stopButton.isEnabled = true
                     }
                 }
             }
+        } catch (e: Exception) {
+            statusTextView.text = "Failed to stop recording: ${e.message}"
+            Log.e("MainActivity", "Error stopping recording", e)
         }
     }
 
