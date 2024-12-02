@@ -1,11 +1,11 @@
 package com.example.lab3part2
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
@@ -13,10 +13,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
-import java.io.File
-
-// Импортируем AudioHandler
-import com.example.lab3part2.AudioHandler
 
 class MainActivity : AppCompatActivity() {
     private lateinit var recordButton: Button
@@ -26,7 +22,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mfccUploader: MFCCUploader
     private lateinit var audioWavPath: String
     private val sampleRate = 44100
-    private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+    private val bufferSize = AudioRecord.getMinBufferSize(8000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,6 +81,7 @@ class MainActivity : AppCompatActivity() {
                         runOnUiThread {
                             if (success) {
                                 statusTextView.text = "Upload successful, navigating to next screen..."
+                                navigateToSecondActivity(errorCode, errorMessage)
                                 clearCache()
                             } else {
                                 statusTextView.text = "Upload failed: Server error $errorCode, $errorMessage"
@@ -98,6 +95,14 @@ class MainActivity : AppCompatActivity() {
             statusTextView.text = "Failed to stop recording: ${e.message}"
             Log.e("MainActivity", "Error stopping recording", e)
         }
+    }
+
+    private fun navigateToSecondActivity(responseCode: Int, responseMessage: String?) {
+        val intent = Intent(this, SecondActivity::class.java).apply {
+            putExtra("response_code", responseCode)
+            putExtra("response_message", responseMessage)
+        }
+        startActivity(intent)
     }
 
     private fun hasPermissions(): Boolean {
@@ -138,4 +143,19 @@ class MainActivity : AppCompatActivity() {
             Log.e("MainActivity", "Failed to clear cache: ${e.message}")
         }
     }
+    // Обработка результата запроса разрешений
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 200) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                // Разрешения предоставлены
+                startRecording()
+            } else {
+                // Разрешения отклонены
+                Log.e("MainActivity", "Permission denied by user")
+                statusTextView.text = "Permissions denied. Cannot start recording."
+            }
+        }
+    }
+
 }

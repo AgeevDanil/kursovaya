@@ -56,7 +56,6 @@ class MFCCUploader(private val url: String, private val context: Context) {
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                 val responseBody = response.body?.string()
                 Log.d("MFCCUploader", "Ответ сервера: ${response.code}, тело: $responseBody")
-                navigateToSecondForm()
                 if (response.isSuccessful) {
                     callback(true, response.code, responseBody)
                 } else {
@@ -107,11 +106,5 @@ class MFCCUploader(private val url: String, private val context: Context) {
 
     private fun showError(errorMessage: String) {
         Log.e("MFCCUploader", errorMessage)
-    }
-
-    private fun navigateToSecondForm() {
-        val intent = Intent(context, SecondActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
     }
 }

@@ -13,4 +13,10 @@
         android:textColor="@color/text_color"
         android:layout_centerInParent="true"
         android:gravity="center"/>
+    <TextView
+        android:id="@+id/responseTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Response will be displayed here"
+        android:textSize="16sp" />
 </RelativeLayout>
