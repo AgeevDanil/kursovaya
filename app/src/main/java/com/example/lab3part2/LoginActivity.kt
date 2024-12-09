@@ -25,7 +25,7 @@ class LoginActivity : AppCompatActivity() {
         passwordEditText = findViewById(R.id.passwordEditText)
         errorTextView = findViewById(R.id.errorTextView)
 
-        mfccUploader = MFCCUploader("https://example.com/login", this)  // Когда серверная часть доработается
+        mfccUploader = MFCCUploader("http://89.23.105.181:5428/api2/auth/auth", this)  // Когда серверная часть доработается
 
         loginButton.setOnClickListener {
             val username = usernameEditText.text.toString()

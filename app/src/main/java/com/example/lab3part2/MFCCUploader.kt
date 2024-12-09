@@ -69,11 +69,12 @@ class MFCCUploader(private val url: String, private val context: Context) {
         val json = JSONObject()
         json.put("username", username)
         json.put("password", password)
+        Log.d("JsonDetka", json.toString())
 
         val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
         val requestBody: RequestBody = json.toString().toRequestBody(mediaType)
         val request = Request.Builder()
-            .url("https://xuy.com/login")
+            .url(url)
             .post(requestBody)
             .build()
 

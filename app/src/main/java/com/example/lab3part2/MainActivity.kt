@@ -39,7 +39,7 @@ class MainActivity : AppCompatActivity() {
         audioWavPath = "${externalCacheDir?.absolutePath}/recording.wav"
 
         audioHandler = AudioHandler(sampleRate, bufferSize)
-        mfccUploader = MFCCUploader("http://89.23.105.181:5248/api/voice/get-mfcc", applicationContext)
+        mfccUploader = MFCCUploader("http://89.23.105.181:5428/api2/test/auth-voice", applicationContext)
 
         recordButton.setOnClickListener {
             startRecording()
@@ -82,7 +82,7 @@ class MainActivity : AppCompatActivity() {
                             if (success) {
                                 statusTextView.text = "Upload successful, navigating to next screen..."
                                 navigateToSecondActivity(errorCode, errorMessage)
-                                clearCache()
+/*                                clearCache()*/
                             } else {
                                 statusTextView.text = "Upload failed: Server error $errorCode, $errorMessage"
                             }
@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun clearCache() {
+/*    private fun clearCache() {
         try {
             val cacheDir = externalCacheDir
             if (cacheDir != null && cacheDir.isDirectory) {
@@ -142,7 +142,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to clear cache: ${e.message}")
         }
-    }
+    }*/
     // Обработка результата запроса разрешений
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
